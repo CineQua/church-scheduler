@@ -1,0 +1,1050 @@
+# Build a Church Worship Service Schedule Generator
+
+I want to build a schedule generator for my church that assigns members to specific Sunday worship service duties based on church rules, rank, gender, age, and fairness rotation.
+
+## Project Goal
+
+Create a web-based schedule generator that accepts a list of church members and automatically produces Sunday service assignments for the following roles:
+
+1. Service Conductor
+2. Three Members Prayer
+   - Prayer 1
+   - Prayer 2
+   - Prayer 3
+3. Bible Readings
+   - First Lesson Reader
+   - Second Lesson Reader
+
+The system should be built in a clean, maintainable way so I can add more church-specific rules later.
+
+---
+
+## Core Member Data
+
+Each member should have the following fields:
+
+- Full Name
+- Gender: Male or Female
+- Age
+- Rank Level
+- Rank Category:
+  - Lower Rank
+  - Higher Rank
+  - Youth
+- Is Active
+- Is Available
+- Notes
+- Last Assigned Date
+- Assignment History
+
+Optional future fields:
+
+- Department
+- Family Group
+- Region
+- Preferred Roles
+- Roles Not Allowed
+- Frequency Limit
+- Special Restrictions
+
+---
+
+## Scheduling Rules
+
+### 1. Service Conductor
+
+The Service Conductor must normally be:
+
+- Male
+- Adult
+- A man of rank
+- Preferably higher rank
+
+Exception:
+
+- Every third Sunday of the month, the Service Conductor must be a young male between ages 11 and 18.
+
+The system should detect whether a Sunday is the third Sunday of the month.
+
+If it is the third Sunday:
+- Select only eligible young males between 11 and 18.
+
+If it is not the third Sunday:
+- Select an eligible adult male of rank.
+
+---
+
+### 2. Three Members Prayer
+
+There are three consecutive prayers.
+
+#### Prayer 1
+- Must be male
+- Usually lower rank preferred
+
+#### Prayer 2
+- Must be female
+- Any rank allowed
+
+#### Prayer 3
+- Must be male
+- Preferably higher rank
+
+The same person should not be assigned to more than one prayer on the same Sunday.
+
+---
+
+### 3. Bible Readings
+
+There are two readings:
+
+- First Lesson Reader
+- Second Lesson Reader
+
+Rules:
+
+- Both readers must be male
+- Can be lower or higher rank
+- Preferably avoid assigning the same person to both readings
+- Preferably avoid assigning someone already assigned to Service Conductor or Three Members Prayer that same Sunday, unless there are not enough available members
+
+---
+
+## Fairness Rules
+
+The scheduler should try to rotate assignments fairly.
+
+When selecting members:
+
+- Prefer members who have not served recently
+- Avoid assigning the same member too often
+- Avoid assigning one person to multiple duties on the same Sunday
+- Track assignment history
+- Allow manual override after the schedule is generated
+
+The selection should not be purely random. It should use weighted logic based on:
+
+- Eligibility
+- Last assigned date
+- Number of recent assignments
+- Role suitability
+- Rank preference
+- Availability
+
+---
+
+## Required Features
+
+Build a simple web app with:
+
+### 1. Member Management
+
+Allow me to:
+
+- Add members
+- Edit members
+- Delete members
+- Mark members active/inactive
+- Mark members available/unavailable
+- Assign gender, age, and rank category
+
+### 2. Schedule Generator
+
+Allow me to:
+
+- Select a date range
+- Generate schedules for every Sunday in that range
+- View the generated schedule in a clean table
+- Manually edit assigned members
+- Regenerate individual Sundays if needed
+
+### 3. Schedule Output
+
+The generated schedule should show:
+
+- Date
+- Service Conductor
+- Prayer 1
+- Prayer 2
+- Prayer 3
+- First Lesson Reader
+- Second Lesson Reader
+
+### 4. Export Options
+
+Include options to export the schedule as:
+
+- CSV
+- PDF-ready print view
+- Copyable table
+
+### 5. Rule Configuration
+
+Create a rules configuration file or section where the rules can be edited later without rewriting the entire app.
+
+Example:
+
+```js
+rules = {
+  serviceConductor: {
+    normal: {
+      gender: "Male",
+      adultOnly: true,
+      rankRequired: true,
+      preferredRank: "Higher Rank"
+    },
+    thirdSunday: {
+      gender: "Male",
+      minAge: 11,
+      maxAge: 18
+    }
+  },
+  prayers: {
+    prayer1: {
+      gender: "Male",
+      preferredRank: "Lower Rank"
+    },
+    prayer2: {
+      gender: "Female",
+      rank: "Any"
+    },
+    prayer3: {
+      gender: "Male",
+      preferredRank: "Higher Rank"
+    }
+  },
+  bibleReadings: {
+    gender: "Male",
+    allowLowerRank: true,
+    allowHigherRank: true
+  }
+}
+
+---
+
+# Technical Requirements
+
+Build this as a modern web application that is beginner-friendly but scalable enough to evolve into a production system.
+
+Preferred stack:
+
+Frontend:
+- React
+- TypeScript
+- Tailwind CSS
+- Vite
+
+State Management:
+- React Context API initially
+- Structure code so Zustand can be added later if needed
+
+Data Storage (MVP):
+- Local browser storage (localStorage)
+
+Future Database Preparation:
+- Structure application to later support:
+    - PostgreSQL
+    - Firebase
+    - Supabase
+
+Validation:
+- Zod schema validation
+
+Date Handling:
+- date-fns
+
+Exporting:
+- CSV export
+- PDF print-ready export
+
+Testing:
+- Vitest
+- React Testing Library
+
+Linting / Formatting:
+- ESLint
+- Prettier
+
+Version Control:
+- Git
+- GitHub repository integration
+
+Create clean folder architecture.
+
+Suggested project structure:
+
+church-scheduler/
+|
+├── src/
+│   ├── components/
+│   │   ├── MemberForm.tsx
+│   │   ├── MemberTable.tsx
+│   │   ├── ScheduleTable.tsx
+│   │   ├── ExportButtons.tsx
+│   │   ├── DashboardCards.tsx
+│   │   └── RulesEditor.tsx
+│   │
+│   ├── pages/
+│   │   ├── Dashboard.tsx
+│   │   ├── Members.tsx
+│   │   ├── GenerateSchedule.tsx
+│   │   ├── ViewSchedules.tsx
+│   │   └── Settings.tsx
+│   │
+│   ├── services/
+│   │   ├── scheduler.ts
+│   │   ├── scoringEngine.ts
+│   │   ├── ruleEngine.ts
+│   │   └── exportService.ts
+│   │
+│   ├── utils/
+│   │   ├── dateUtils.ts
+│   │   ├── memberUtils.ts
+│   │   └── scheduleUtils.ts
+│   │
+│   ├── types/
+│   │   ├── Member.ts
+│   │   ├── Assignment.ts
+│   │   └── Rules.ts
+│   │
+│   ├── data/
+│   │   └── rules.ts
+│   │
+│   └── App.tsx
+│
+├── README.md
+├── package.json
+├── .gitignore
+├── .env.example
+└── docs/
+
+---
+
+# GitHub Requirements
+
+The application will be pushed to a GitHub repository.
+
+Create:
+
+- README.md
+- Installation instructions
+- Folder structure explanation
+- Feature overview
+- Scheduler logic explanation
+- Future roadmap
+
+Include Git workflow recommendations:
+
+Main branch strategy:
+
+main
+development
+feature/*
+
+Example:
+
+feature/member-management
+feature/schedule-generator
+feature/export-system
+
+Include commit message examples:
+
+feat: add member management module
+
+feat: add schedule scoring engine
+
+fix: resolve duplicate assignment issue
+
+refactor: move schedule logic into services
+
+docs: update README
+
+---
+
+# Scheduler Logic
+
+Create a scheduling engine with modular rule processing.
+
+Scheduler flow:
+
+Step 1:
+Get all Sundays in selected date range
+
+Step 2:
+Determine Sunday type:
+
+- Regular Sunday
+- Third Sunday of month
+
+Step 3:
+Load church rules
+
+Step 4:
+Load all active members
+
+Step 5:
+Filter eligible candidates for each role
+
+Examples:
+
+Service Conductor:
+
+Normal Sunday:
+
+- Male
+- Adult
+- Rank required
+
+Third Sunday:
+
+- Male
+- Age 11–18
+
+Prayer 1:
+
+- Male
+- Lower rank preferred
+
+Prayer 2:
+
+- Female
+- Any rank
+
+Prayer 3:
+
+- Male
+- Higher rank preferred
+
+Bible Readings:
+
+- Male
+- Lower or Higher rank
+
+Step 6:
+
+Calculate scores for all eligible members
+
+Step 7:
+
+Sort members by score
+
+Step 8:
+
+Assign highest-scoring member
+
+Step 9:
+
+Prevent duplicate assignments where possible
+
+Step 10:
+
+Store assignment history
+
+Step 11:
+
+Move to next Sunday
+
+---
+
+# Scoring Logic Example
+
+Use weighted scoring instead of random selection.
+
+Each eligible member receives a score.
+
+Example:
+
+Initial score:
+
+0
+
+Fairness scoring:
+
++50
+Member has not served recently
+
++30
+Member matches preferred rank
+
++20
+Member has fewer assignments overall
+
++15
+Member has not served within last two Sundays
+
++10
+Member belongs to preferred age category
+
+Penalty scoring:
+
+-40
+Member served previous Sunday
+
+-50
+Member already assigned another duty that day
+
+-75
+Member served same role recently
+
+-100
+Inactive member
+
+-100
+Unavailable member
+
+-1000
+Rule violation
+
+Examples:
+
+Prayer 1:
+
+John:
+Lower Rank
+Not served in three weeks
+
+Score:
+
++30
++50
++20
+
+Total = 100
+
+Prayer 3:
+
+Michael:
+Higher Rank
+Served previous Sunday
+
+Score:
+
++30
+-40
+
+Total = -10
+
+Select highest scoring candidate.
+
+---
+
+# Rule Engine Requirements
+
+Do not hard-code church rules inside components.
+
+Create editable configuration:
+
+rules.ts
+
+Example:
+
+export const rules = {
+
+serviceConductor: {
+
+normalSunday: {
+gender:"Male",
+adultOnly:true,
+rankRequired:true,
+preferredRank:"Higher Rank"
+},
+
+thirdSunday:{
+gender:"Male",
+minAge:11,
+maxAge:18
+}
+
+},
+
+prayer1:{
+gender:"Male",
+preferredRank:"Lower Rank"
+},
+
+prayer2:{
+gender:"Female"
+},
+
+prayer3:{
+gender:"Male",
+preferredRank:"Higher Rank"
+},
+
+firstLesson:{
+gender:"Male"
+},
+
+secondLesson:{
+gender:"Male"
+}
+
+}
+
+Future rules should be easily added.
+
+---
+
+# UI Requirements
+
+Create a clean church administration dashboard.
+
+Design goals:
+
+- Modern
+- Simple
+- Elegant
+- Mobile responsive
+- Easy for church administrators to understand
+
+Use:
+
+- Cards
+- Tables
+- Modal forms
+- Tabs
+- Search fields
+- Filters
+
+Pages:
+
+1. Dashboard
+
+Display:
+
+- Total members
+- Active members
+- Upcoming Sundays
+- Recent assignments
+- Quick generate button
+
+---
+
+2. Members Page
+
+Features:
+
+- Add member
+- Edit member
+- Delete member
+- Search member
+- Filter by:
+    - Gender
+    - Rank
+    - Age
+    - Availability
+    - Active status
+
+---
+
+3. Generate Schedule Page
+
+Features:
+
+- Select date range
+- Generate schedules
+- Regenerate individual Sundays
+- Preview schedule before saving
+
+---
+
+4. Schedule View Page
+
+Display:
+
+Date | Service Conductor | Prayer 1 | Prayer 2 | Prayer 3 | First Lesson | Second Lesson
+
+Allow:
+
+- Manual editing
+- Drag-and-drop reassignment
+- Assignment history viewing
+
+---
+
+5. Rules Page
+
+Allow editing:
+
+- Rank requirements
+- Age restrictions
+- Gender restrictions
+- Assignment frequency limits
+- Scoring weights
+
+---
+
+6. Export Page
+
+Allow:
+
+- CSV export
+- PDF export
+- Print view
+- Copy-to-clipboard
+
+---
+
+# Future Enhancement Preparation
+
+Build architecture to support future additions:
+
+- Choir schedules
+- Sunday School schedules
+- Duty roster schedules
+- Availability calendar
+- Vacation tracking
+- SMS notifications
+- Email notifications
+- Multi-parish support
+- AI recommendations
+- Conflict detection
+- Recurring exemptions
+- Church event scheduling
+- Role swapping
+- Admin user accounts
+
+---
+
+# Important
+
+Build MVP functionality first.
+
+Prioritize:
+
+1. Member management
+2. Schedule generation
+3. Scoring engine
+4. Rule engine
+5. Export functionality
+
+After completion explain:
+
+- How scheduler logic works
+- How scoring works
+- How to add rules
+- How to add new service roles
+- How GitHub deployment works
+- How future database integration should occur
+
+---
+
+# Rank Hierarchy System
+
+Replace the simple rank category approach with a structured rank hierarchy system.
+
+Each member should have:
+
+- Rank Name
+- Rank Level Number
+- Rank Category
+- Leadership Status (optional)
+
+Example:
+
+Member:
+
+{
+    id:"001",
+    fullName:"John Doe",
+    gender:"Male",
+    age:35,
+    rankName:"Leader",
+    rankLevel:5,
+    rankCategory:"Higher Rank",
+    leadershipStatus:false
+}
+
+---
+
+# Rank Definitions
+
+Create a configurable rank structure that can easily be edited later.
+
+Example:
+
+export const rankHierarchy = [
+
+{
+name:"Youth",
+level:1,
+category:"Youth"
+},
+
+{
+name:"Brother",
+level:2,
+category:"Lower Rank"
+},
+
+{
+name:"Senior Brother",
+level:3,
+category:"Lower Rank"
+},
+
+{
+name:"Assistant Leader",
+level:4,
+category:"Lower Rank"
+},
+
+{
+name:"Leader",
+level:5,
+category:"Higher Rank"
+},
+
+{
+name:"Senior Leader",
+level:6,
+category:"Higher Rank"
+},
+
+{
+name:"Evangelist",
+level:7,
+category:"Higher Rank"
+},
+
+{
+name:"Most Senior Evangelist",
+level:8,
+category:"Higher Rank"
+},
+
+{
+name:"Superior Evangelist",
+level:9,
+category:"Higher Rank"
+},
+
+{
+name:"Shepherd",
+level:10,
+category:"Higher Rank"
+}
+
+]
+
+---
+
+# Rank Processing Rules
+
+The scheduling engine should use rank levels when making decisions.
+
+Examples:
+
+Service Conductor:
+
+Regular Sunday:
+
+Preferred:
+
+- Leader or above
+- Rank level >= 5
+
+Allowed:
+
+- Adult male
+- Rank level >= 4
+
+Third Sunday:
+
+- Ignore rank
+- Male
+- Age 11–18
+
+Prayer 1:
+
+Preferred:
+
+- Lower rank
+- Rank level 2–4
+
+Prayer 2:
+
+- Female
+- Any rank
+
+Prayer 3:
+
+Preferred:
+
+- Higher rank
+- Rank level >= 5
+
+Bible Readers:
+
+Preferred:
+
+- Rank level >=2
+
+Any male may qualify unless other rules later restrict them.
+
+---
+
+# Rank Scoring Logic
+
+Add rank-based scoring.
+
+Examples:
+
+Preferred rank match:
+
++30
+
+Exact preferred rank:
+
++40
+
+Higher rank than required:
+
++15
+
+Lower than preferred rank:
+
+-20
+
+Does not meet minimum rank:
+
+-1000
+
+Examples:
+
+Service Conductor:
+
+Required:
+
+Rank level >=5
+
+Member:
+
+Leader
+Level 5
+
+Score:
+
++40
+
+Member:
+
+Senior Leader
+Level 6
+
+Score:
+
++55
+
+Member:
+
+Brother
+Level 2
+
+Score:
+
+-1000
+
+---
+
+# Rule Configuration Update
+
+Update rules.ts structure:
+
+export const rules = {
+
+serviceConductor: {
+
+normalSunday:{
+
+gender:"Male",
+
+adultOnly:true,
+
+minimumRankLevel:5,
+
+preferredRanks:[
+"Leader",
+"Senior Leader",
+"Evangelist",
+"Most Senior Evangelist",
+"Superior Evangelist",
+"Shepherd"
+]
+
+},
+
+thirdSunday:{
+
+gender:"Male",
+
+minimumAge:11,
+
+maximumAge:18
+
+}
+
+},
+
+prayer1:{
+
+gender:"Male",
+
+preferredRankLevels:[2,3,4]
+
+},
+
+prayer2:{
+
+gender:"Female"
+
+},
+
+prayer3:{
+
+gender:"Male",
+
+preferredRankLevels:[5,6,7,8,9,10]
+
+},
+
+firstLesson:{
+
+gender:"Male",
+
+minimumRankLevel:2
+
+},
+
+secondLesson:{
+
+gender:"Male",
+
+minimumRankLevel:2
+
+}
+
+}
+
+---
+
+# Future Rank Enhancements
+
+Build the architecture so rank rules can later support:
+
+- Ordination dates
+- Years in church
+- Leadership positions
+- Department leadership
+- Parish officers
+- Regional officers
+- Temporary restrictions
+- Special event exceptions
+- Feast day rules
+- Diocese-specific rules
+
+Do not hard-code rank logic directly into components.
+
+Keep all rank definitions centralized in:
+
+rankHierarchy.ts
