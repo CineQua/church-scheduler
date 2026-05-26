@@ -128,4 +128,59 @@ describe('scheduler', () => {
     );
     expect(prayer2Member?.gender).toBe('Female');
   });
+
+  it('reserves every role for youth on the third Sunday (Youth Sunday)', () => {
+    const youthMembers: Member[] = [
+      ...mockMembers,
+      {
+        id: 'fy1',
+        fullName: 'Faith Youth',
+        gender: 'Female',
+        age: 14,
+        rankName: 'Youth',
+        rankLevel: 1,
+        rankCategory: 'Youth',
+        isActive: true,
+        isAvailable: true,
+        assignmentHistory: [],
+      },
+      {
+        id: 'my2',
+        fullName: 'Daniel Youth',
+        gender: 'Male',
+        age: 16,
+        rankName: 'Youth',
+        rankLevel: 1,
+        rankCategory: 'Youth',
+        isActive: true,
+        isAvailable: true,
+        assignmentHistory: [],
+      },
+    ];
+
+    const sunday = new Date(2026, 5, 21); // third Sunday
+    const schedule = generateScheduleForDate(sunday, youthMembers, defaultRules);
+    const byId = (id?: string) => youthMembers.find((m) => m.id === id);
+
+    const maleYouthRoles = [
+      'serviceConductor',
+      'prayer1',
+      'prayer3',
+      'firstLesson',
+      'secondLesson',
+    ] as const;
+    for (const role of maleYouthRoles) {
+      const m = byId(schedule.assignments[role]?.memberId);
+      expect(m, `${role} should be assigned`).toBeDefined();
+      expect(m?.gender, `${role} gender`).toBe('Male');
+      expect(m!.age).toBeGreaterThanOrEqual(11);
+      expect(m!.age).toBeLessThanOrEqual(18);
+    }
+
+    const prayer2 = byId(schedule.assignments.prayer2?.memberId);
+    expect(prayer2?.gender).toBe('Female');
+    expect(prayer2!.age).toBeGreaterThanOrEqual(11);
+    expect(prayer2!.age).toBeLessThanOrEqual(18);
+    expect(prayer2?.id).toBe('fy1');
+  });
 });

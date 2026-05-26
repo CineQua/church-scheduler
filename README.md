@@ -165,6 +165,23 @@ isThirdSundayOfMonth(date)
 
 Counts Sundays from the first of the month up to the given date. If it's the third count, it's a Third Sunday.
 
+### Third Sunday = "Youth Sunday"
+
+On the third Sunday **every role is reserved for youth** (age within
+`serviceConductor.thirdSunday.minimumAge`–`maximumAge`, default 11–18). The
+per-role gender constraint still applies:
+
+| Role | Third Sunday |
+|---|---|
+| Service Conductor | Male youth |
+| Prayer 1 | Male youth |
+| Prayer 2 | **Female** youth |
+| Prayer 3 | Male youth |
+| First / Second Lesson | Male youth |
+
+On all other Sundays the normal rank/gender rules apply. The youth age range is
+configurable via the Service Conductor → Third Sunday min/max age in Settings.
+
 ## How Scoring Works
 
 Each eligible member gets a numeric score. Higher score = selected first.
