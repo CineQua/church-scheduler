@@ -1,22 +1,41 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Users,
+  Users as UsersIcon,
   CalendarPlus,
   CalendarDays,
   Settings,
+  ShieldCheck,
   Church,
+  LogOut,
 } from 'lucide-react';
+import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 
-const NAV_ITEMS = [
+type Gate = 'canWrite' | 'isSuperAdmin';
+
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end: boolean;
+  requires?: Gate;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/members', label: 'Members', icon: Users, end: false },
-  { to: '/generate', label: 'Generate', icon: CalendarPlus, end: false },
+  { to: '/members', label: 'Members', icon: UsersIcon, end: false },
+  { to: '/generate', label: 'Generate', icon: CalendarPlus, end: false, requires: 'canWrite' },
   { to: '/schedules', label: 'Schedules', icon: CalendarDays, end: false },
-  { to: '/settings', label: 'Settings', icon: Settings, end: false },
+  { to: '/settings', label: 'Settings', icon: Settings, end: false, requires: 'canWrite' },
+  { to: '/users', label: 'Users', icon: ShieldCheck, end: false, requires: 'isSuperAdmin' },
 ];
 
 export function Navbar() {
+  const auth = useAuth();
+  const { user, logout } = auth;
+
+  const items = NAV_ITEMS.filter((item) => !item.requires || auth[item.requires]);
+
   return (
     <>
       {/* Sidebar — desktop */}
@@ -32,7 +51,7 @@ export function Navbar() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {items.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -51,15 +70,27 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="px-6 py-4 border-t border-brand-700">
-          <p className="text-xs text-brand-400">Church Scheduler v0.1</p>
+        <div className="px-4 py-4 border-t border-brand-700 space-y-3">
+          {user && (
+            <div className="px-2">
+              <p className="text-sm font-medium text-white truncate">{user.name || user.email}</p>
+              <p className="text-xs text-brand-300">{ROLE_LABELS[user.role]}</p>
+            </div>
+          )}
+          <button
+            onClick={() => void logout()}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-brand-200 hover:bg-brand-800 hover:text-white transition-colors"
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
         </div>
       </aside>
 
       {/* Bottom nav — mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40">
         <div className="flex items-center justify-around py-2">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {items.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -74,6 +105,13 @@ export function Navbar() {
               {label}
             </NavLink>
           ))}
+          <button
+            onClick={() => void logout()}
+            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400"
+          >
+            <LogOut size={20} />
+            Sign out
+          </button>
         </div>
       </nav>
     </>

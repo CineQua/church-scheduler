@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { UserPlus, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { MemberTable } from '../components/MemberTable';
 import { MemberForm } from '../components/MemberForm';
 import { Modal } from '../components/Modal';
@@ -14,6 +15,7 @@ type AvailFilter = 'All' | 'Available' | 'Unavailable';
 
 export default function Members() {
   const { members, addMember, updateMember, deleteMember } = useApp();
+  const { canWrite } = useAuth();
 
   const [search, setSearch] = useState('');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('All');
@@ -84,13 +86,15 @@ export default function Members() {
             {members.length} total · {members.filter((m) => m.isActive).length} active
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <UserPlus size={16} />
-          Add Member
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <UserPlus size={16} />
+            Add Member
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -162,6 +166,7 @@ export default function Members() {
       <div className="card overflow-hidden">
         <MemberTable
           members={filtered}
+          readOnly={!canWrite}
           onEdit={(m) => setEditingMember(m)}
           onDelete={(id) => deleteMember(id)}
           onToggleActive={handleToggleActive}

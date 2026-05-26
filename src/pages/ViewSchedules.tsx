@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { ScheduleTable } from '../components/ScheduleTable';
 import { ExportButtons } from '../components/ExportButtons';
 import type { ServiceRole } from '../types/Assignment';
@@ -8,6 +9,7 @@ import { formatDate } from '../utils/dateUtils';
 
 export default function ViewSchedules() {
   const { schedules, members, updateAssignment, deleteSchedule } = useApp();
+  const { canWrite } = useAuth();
 
   const [filterMonth, setFilterMonth] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -102,13 +104,14 @@ export default function ViewSchedules() {
           <ScheduleTable
             schedules={filtered}
             members={members}
+            readOnly={!canWrite}
             onUpdateAssignment={handleUpdateAssignment}
           />
         </div>
       )}
 
       {/* Per-schedule delete controls */}
-      {filtered.length > 0 && (
+      {canWrite && filtered.length > 0 && (
         <div className="card p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Manage Individual Schedules</h2>
           <div className="space-y-2">

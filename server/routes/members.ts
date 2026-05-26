@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db';
-import type { Member } from '../../src/types/Member';
+import { MemberSchema, type Member } from '../../src/types/Member';
 
 export const membersRouter = Router();
 
@@ -94,15 +94,23 @@ membersRouter.get('/', (_req, res) => {
 });
 
 membersRouter.post('/', (req, res) => {
-  const member = req.body as Member;
-  upsertMember(member);
-  res.status(201).json(member);
+  const parsed = MemberSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0]?.message ?? 'Invalid member' });
+    return;
+  }
+  upsertMember(parsed.data as Member);
+  res.status(201).json(parsed.data);
 });
 
 membersRouter.put('/:id', (req, res) => {
-  const member = { ...(req.body as Member), id: req.params.id };
-  upsertMember(member);
-  res.json(member);
+  const parsed = MemberSchema.safeParse({ ...req.body, id: req.params.id });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0]?.message ?? 'Invalid member' });
+    return;
+  }
+  upsertMember(parsed.data as Member);
+  res.json(parsed.data);
 });
 
 membersRouter.delete('/:id', (req, res) => {

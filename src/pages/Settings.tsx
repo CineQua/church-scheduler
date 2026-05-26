@@ -112,8 +112,9 @@ export default function Settings() {
 
         <div className="mt-4 pt-4 border-t border-slate-100">
           <p className="text-xs text-slate-400">
-            Data is stored in your browser's localStorage. It persists between sessions but will
-            be lost if you clear browser data. Future versions will support cloud database sync.
+            Data is stored on the server in a SQLite database and shared across all admins. It
+            persists across sessions and deployments via the mounted <code className="bg-slate-100 px-1 py-0.5 rounded">/data</code> volume.
+            See the README for backup and restore instructions.
           </p>
         </div>
       </div>

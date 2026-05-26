@@ -7,9 +7,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_PATH=/app/data/church.db
+      - DATABASE_PATH=/data/church-scheduler.sqlite
+      # Required in production — generate with: openssl rand -hex 32
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in your .env file}
+      # First Super Admin, created on first boot only (no-op once a user exists)
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_NAME=${ADMIN_NAME:-Super Admin}
     volumes:
-      - church-data:/app/data
+      # Named volume mounted at /data — the SQLite database persists here.
+      - church-data:/data
     restart: unless-stopped
 
 volumes:

@@ -9,6 +9,7 @@ interface MemberTableProps {
   onDelete: (id: string) => void;
   onToggleActive: (member: Member) => void;
   onToggleAvailable: (member: Member) => void;
+  readOnly?: boolean;
 }
 
 export function MemberTable({
@@ -17,6 +18,7 @@ export function MemberTable({
   onDelete,
   onToggleActive,
   onToggleAvailable,
+  readOnly = false,
 }: MemberTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -92,7 +94,8 @@ export function MemberTable({
               <td className="py-3 px-4 text-center">
                 <button
                   onClick={() => onToggleActive(m)}
-                  className="transition-colors"
+                  disabled={readOnly}
+                  className="transition-colors disabled:cursor-default"
                   title={m.isActive ? 'Mark inactive' : 'Mark active'}
                 >
                   {m.isActive ? (
@@ -105,7 +108,8 @@ export function MemberTable({
               <td className="py-3 px-4 text-center">
                 <button
                   onClick={() => onToggleAvailable(m)}
-                  className="transition-colors"
+                  disabled={readOnly}
+                  className="transition-colors disabled:cursor-default"
                   title={m.isAvailable ? 'Mark unavailable' : 'Mark available'}
                 >
                   {m.isAvailable ? (
@@ -116,26 +120,28 @@ export function MemberTable({
                 </button>
               </td>
               <td className="py-3 px-4">
-                <div className="flex items-center gap-1 justify-end">
-                  <button
-                    onClick={() => onEdit(m)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                    title="Edit member"
-                  >
-                    <Edit2 size={15} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      deleteId === m.id
-                        ? 'text-white bg-red-500 hover:bg-red-600'
-                        : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
-                    }`}
-                    title={deleteId === m.id ? 'Click again to confirm' : 'Delete member'}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 justify-end">
+                    <button
+                      onClick={() => onEdit(m)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                      title="Edit member"
+                    >
+                      <Edit2 size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        deleteId === m.id
+                          ? 'text-white bg-red-500 hover:bg-red-600'
+                          : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+                      }`}
+                      title={deleteId === m.id ? 'Click again to confirm' : 'Delete member'}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

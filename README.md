@@ -1,27 +1,47 @@
 # Church Scheduler
 
-A web-based worship service schedule generator for church administrators. Assigns members to Sunday service duties based on rank, gender, age, and fairness rotation.
+A web-based, multi-admin worship service schedule generator for church administrators. Assigns members to Sunday service duties based on rank, gender, age, and fairness rotation.
 
-A React frontend talks to a small Express + SQLite backend; the whole thing ships as a single Docker container.
+A React frontend talks to a small Express + SQLite backend; the whole thing ships as a single Docker container and is shared by multiple authenticated admins.
 
 ## Features
 
+- **Multi-admin login** — Email/password authentication with hashed passwords and signed-cookie sessions
+- **Role-based access** — Super Admin, Scheduler Admin, and read-only Viewer roles
 - **Member Management** — Add, edit, delete members with rank, gender, age, and availability
 - **Smart Scheduling** — Weighted scoring engine that rotates assignments fairly
-- **Rule Engine** — All church rules live in a central config file, editable via the UI
+- **Rule Engine** — All church rules live in a central config, editable via the UI
 - **Third Sunday Detection** — Automatically assigns youth conductor on the third Sunday
 - **Manual Overrides** — Edit any assignment inline after generation
 - **Export** — CSV, print-ready PDF, and clipboard copy
-- **SQLite persistence** — Shared, central database (replaces per-browser localStorage)
+- **SQLite persistence** — Shared, central database on a persistent `/data` volume (replaces per-browser localStorage)
 
 ## Quick Start (Docker — recommended)
 
-```bash
-docker compose up --build
-```
+1. Create a `.env` file (Docker Compose reads it automatically):
 
-Open [http://localhost:3001](http://localhost:3001). The SQLite database is stored in the
-`church-data` Docker volume and persists across restarts.
+   ```bash
+   cp .env.example .env
+   ```
+
+   Set at minimum a strong `JWT_SECRET` and the first-admin credentials:
+
+   ```ini
+   JWT_SECRET=<run: openssl rand -hex 32>
+   ADMIN_EMAIL=admin@yourchurch.org
+   ADMIN_PASSWORD=<a strong password>
+   ```
+
+2. Build and run:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+Open [http://localhost:3001](http://localhost:3001) and sign in with the admin
+credentials above. The SQLite database lives in the `church-data` Docker volume
+(mounted at `/data`) and persists across restarts. The first Super Admin is
+created automatically on first boot.
 
 ## Quick Start (local development)
 
@@ -30,12 +50,19 @@ Runs the Vite frontend (port 5173) and the Express API (port 3001) together. Vit
 
 ```bash
 npm install
+cp .env.example .env          # then set ADMIN_EMAIL / ADMIN_PASSWORD
 npm run dev:all
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173) and log in. On first run the
+server seeds the Super Admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. You can also
+create it explicitly:
 
-To run them separately: `npm run dev` (frontend) and `npm run dev:server` (backend).
+```bash
+npm run seed                  # create the first Super Admin from env vars
+```
+
+To run the processes separately: `npm run dev` (frontend) and `npm run dev:server` (backend).
 
 ### Production build without Docker
 
@@ -44,15 +71,28 @@ npm run build   # builds the frontend into dist/
 npm start       # Express serves dist/ + the API on port 3001
 ```
 
+In production, set `NODE_ENV=production` and a `JWT_SECRET` of at least 32
+characters — the server refuses to start without it.
+
 ## Project Structure
 
 ```
 server/                # Express + SQLite backend
-├── db.ts              # better-sqlite3 connection + schema + seed
-├── index.ts           # Express app: API routes + serves built frontend
+├── env.ts             # Centralised env/secret config
+├── db.ts              # better-sqlite3 connection; runs migrations + seeds
+├── schema.ts          # All table definitions (idempotent migrate())
+├── auth.ts            # Password hashing (bcrypt) + JWT sign/verify + roles
+├── middleware.ts      # requireAuth / requireRole route guards
+├── users.ts           # User data-access (create/list/update/delete)
+├── seed.ts            # Creates the first Super Admin from env vars
+├── migrate.ts         # `npm run db:migrate` entry point
+├── index.ts           # Express app: protected API routes + serves frontend
 └── routes/
+    ├── auth.ts        # POST /api/auth/login, /logout, GET /me
+    ├── users.ts       # CRUD /api/users (Super Admin only)
+    ├── ranks.ts       # GET /api/ranks (reference data)
     ├── members.ts     # GET/POST/PUT/DELETE /api/members
-    ├── schedules.ts   # GET/POST/PUT/DELETE /api/schedules (bulk save dedups by date)
+    ├── schedules.ts   # GET/POST/PUT/DELETE /api/schedules (+ normalised mirror)
     └── rules.ts       # GET/PUT /api/rules
 
 src/
@@ -70,20 +110,23 @@ src/
 │   └── Modal          # Reusable modal wrapper
 │
 ├── pages/             # Route-level pages
+│   ├── Login          # Email/password sign-in
 │   ├── Dashboard      # Overview stats and upcoming Sundays
 │   ├── Members        # Member CRUD with search/filter
 │   ├── GenerateSchedule # Date range picker + generate + preview
 │   ├── ViewSchedules  # View, edit, export saved schedules
-│   └── Settings       # Rules editor + rank hierarchy reference
+│   ├── Settings       # Rules editor + rank hierarchy reference
+│   └── Users          # Admin user management (Super Admin only)
+│
+├── context/
+│   ├── AppContext     # App data; loads from + persists to the API
+│   └── AuthContext    # Session + role state; login/logout
 │
 ├── services/          # Core business logic
 │   ├── scheduler      # Main scheduling orchestrator
 │   ├── scoringEngine  # Weighted member scoring
 │   ├── ruleEngine     # Eligibility filtering per role
 │   └── exportService  # CSV / print / clipboard export
-│
-├── context/
-│   └── AppContext     # React Context; loads from + persists to the API
 │
 ├── data/
 │   ├── rules.ts       # Default rule configuration
@@ -174,6 +217,28 @@ All weights are editable in **Settings → Scoring Weights**.
 | 9 | Superior Evangelist | Higher Rank |
 | 10 | Shepherd | Higher Rank |
 
+## Authentication & Roles
+
+Login uses email + password. Passwords are hashed with **bcrypt** and never
+stored in plaintext. On success the server issues a **JWT** stored in an
+**httpOnly cookie** (`Secure` + `SameSite=Lax` in production), so the token is
+never exposed to JavaScript. Logout clears the cookie.
+
+The first **Super Admin** is created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on
+first boot (or via `npm run seed`). Super Admins create all other users under
+the **Users** page.
+
+| Role | Capabilities |
+|---|---|
+| **Super Admin** | Full access, including creating/editing/disabling other admin users |
+| **Scheduler Admin** | Manage members, generate/edit schedules, edit rules |
+| **Viewer** | Read-only access to members and schedules |
+
+Roles are enforced **server-side** by middleware (`server/middleware.ts`): every
+`/api` route except `/api/auth/*` and `/api/health` requires a valid session;
+`GET`s are allowed for any role, writes require an admin role, and `/api/users`
+requires Super Admin. The frontend additionally hides controls a role can't use.
+
 ## Database & Backend
 
 The app uses a small **Express + SQLite** backend (`server/`). The frontend never touches
@@ -181,38 +246,92 @@ the database directly — it calls the REST API via `src/api/client.ts`.
 
 ### API endpoints
 
-| Method | Route | Purpose |
-|---|---|---|
-| GET | `/api/members` | List all members |
-| POST | `/api/members` | Create a member |
-| PUT | `/api/members/:id` | Update a member |
-| DELETE | `/api/members/:id` | Delete a member |
-| GET | `/api/schedules` | List all schedules |
-| POST | `/api/schedules` | Bulk save (replaces schedules sharing a date) |
-| PUT | `/api/schedules/:id` | Update one schedule (e.g. manual assignment edits) |
-| DELETE | `/api/schedules/:id` | Delete a schedule |
-| GET | `/api/rules` | Get the rules config |
-| PUT | `/api/rules` | Update the rules config |
+All routes below `/api` require authentication except `/api/health` and
+`/api/auth/login`. Write methods require an admin role; `/api/users` requires
+Super Admin.
+
+| Method | Route | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/auth/login` | public | Sign in; sets the session cookie |
+| POST | `/api/auth/logout` | auth | Clear the session cookie |
+| GET | `/api/auth/me` | auth | Current user + role |
+| GET | `/api/users` | super_admin | List admin users |
+| POST | `/api/users` | super_admin | Create an admin user |
+| PUT | `/api/users/:id` | super_admin | Update role / status / password |
+| DELETE | `/api/users/:id` | super_admin | Delete an admin user |
+| GET | `/api/ranks` | auth | Rank reference data |
+| GET | `/api/members` | auth | List all members |
+| POST/PUT/DELETE | `/api/members[/:id]` | admin | Create / update / delete a member |
+| GET | `/api/schedules` | auth | List all schedules |
+| POST | `/api/schedules` | admin | Bulk save (replaces schedules sharing a date) |
+| PUT/DELETE | `/api/schedules/:id` | admin | Update / delete a schedule |
+| GET | `/api/rules` | auth | Get the rules config |
+| PUT | `/api/rules` | admin | Update the rules config |
+
+All write payloads are validated with **Zod** before touching the database.
 
 ### SQLite schema
 
-- `members` — one row per member; `assignmentHistory` and future optional fields stored as JSON
-- `schedules` — one row per Sunday; `date` is UNIQUE; `assignments` stored as JSON keyed by role
+- `users` — admin accounts; `passwordHash` (bcrypt), `role`, `isActive`
+- `members` — one row per member; `assignmentHistory` + optional fields as JSON
+- `ranks` — rank reference data (name, level, category), seeded from the hierarchy
 - `rules` — single-row config blob (`id = 1`)
+- `schedules` — one row per Sunday; `date` UNIQUE; `assignments` as JSON keyed by role
+- `assignments` — normalised mirror: one row per role per schedule
+- `assignment_history` — append-only audit log of assignment changes
 
-The DB file location is set by `DATABASE_PATH` (default `./data/church.db` locally,
-`/app/data/church.db` in Docker, backed by a named volume).
+Migrations live in `server/schema.ts` and run automatically on startup (and via
+`npm run db:migrate`). They are idempotent, so existing data is preserved.
 
-### Configuration
+The DB file location is set by `DATABASE_PATH` (default
+`./data/church-scheduler.sqlite` locally, `/data/church-scheduler.sqlite` in
+Docker, backed by a named volume mounted at `/data`).
 
-Copy `.env.example` to `.env` and adjust `PORT` / `DATABASE_PATH` if needed.
+### Environment variables
+
+Copy `.env.example` to `.env` and set the values. See
+[DEPLOYMENT.md](./DEPLOYMENT.md) for the full reference.
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `NODE_ENV` | — | `development` | `production` enables secure cookies + strict secret checks |
+| `PORT` | — | `3001` | Server port |
+| `DATABASE_PATH` | — | `./data/church-scheduler.sqlite` | SQLite file location |
+| `JWT_SECRET` | **prod** | dev placeholder | Token signing secret (≥ 32 chars in prod) |
+| `JWT_EXPIRES_IN` | — | `7d` | Session lifetime |
+| `ADMIN_EMAIL` | first boot | — | Email of the seeded Super Admin |
+| `ADMIN_PASSWORD` | first boot | — | Password of the seeded Super Admin (≥ 8 chars) |
+| `ADMIN_NAME` | — | `Super Admin` | Display name of the seeded admin |
+
+## Production Deployment
+
+The app deploys as a single Docker image with a persistent disk mounted at
+`/data`. Step-by-step instructions for **Render** and **Railway**, including the
+required environment variables, are in **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+
+Security checklist for production:
+
+- Serve over **HTTPS** (Render/Railway provide TLS; the app sets `trust proxy`
+  and `Secure` cookies automatically when `NODE_ENV=production`).
+- Set a strong, unique `JWT_SECRET` (`openssl rand -hex 32`).
+- Keep all secrets in environment variables — never commit `.env`.
+- The SQLite file is on the server volume only and is **never** served over HTTP.
+- Change the seeded admin password after first login.
+
+## Backup & Restore
+
+All state is the single SQLite file on the `/data` volume. To back up, copy
+`/data/church-scheduler.sqlite` somewhere safe; to restore, stop the app, swap
+the file back in (removing any `-wal`/`-shm` siblings), and restart. Full
+commands for Docker, Render, and Railway are in
+**[DEPLOYMENT.md → Backup & Restore](./DEPLOYMENT.md#backup--restore)**.
 
 ### Migrating to PostgreSQL later
 
-The data-access logic is isolated in `server/db.ts` and `server/routes/*`. To swap SQLite
-for PostgreSQL: replace `better-sqlite3` with `pg`, convert the synchronous `db.prepare().run()`
-calls to async queries, and add a `db` service to `docker-compose.yml`. The frontend and the
-API contract stay unchanged.
+The data-access logic is isolated in `server/` (`db.ts`, `schema.ts`, `users.ts`,
+`routes/*`). To swap SQLite for PostgreSQL: replace `better-sqlite3` with `pg`,
+convert the synchronous `db.prepare().run()` calls to async queries, and add a
+`db` service to `docker-compose.yml`. The frontend and the API contract stay unchanged.
 
 ## Git Workflow
 
@@ -250,6 +369,7 @@ docs: update README
 | Dates | date-fns |
 | State | React Context + useReducer |
 | Backend | Express 4 (TypeScript via tsx) |
+| Auth | bcryptjs (hashing) + jsonwebtoken (JWT) + httpOnly cookies |
 | Database | SQLite (better-sqlite3) |
 | Container | Docker + docker-compose |
 | Testing | Vitest + React Testing Library |
@@ -262,6 +382,8 @@ npm run dev              # Frontend only (Vite, port 5173)
 npm run dev:server       # Backend only (Express, port 3001)
 npm run build            # Production build of the frontend
 npm start                # Run the backend serving the built frontend
+npm run db:migrate       # Apply the database schema (idempotent)
+npm run seed             # Create the first Super Admin from env vars
 npm test                 # Run unit tests
 npm run typecheck:server # Type-check the backend
 npm run lint             # ESLint
@@ -277,7 +399,7 @@ npm run format           # Prettier
 - Email/SMS notifications
 - Multi-parish support
 - Role swapping requests
-- Admin user accounts
+- Password reset / email invitations for new admins
 - AI-assisted scheduling recommendations
 - Conflict detection
 - Feast day and special event rules
