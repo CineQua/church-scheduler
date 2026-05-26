@@ -69,6 +69,11 @@ export const api = {
         body: JSON.stringify({ email, password }),
       }),
     logout: () => request<void>('/auth/logout', { method: 'POST' }),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<void>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
   },
   users: {
     list: () => request<AdminUser[]>('/users'),

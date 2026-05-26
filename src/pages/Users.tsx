@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { UserPlus, Trash2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Trash2, ShieldCheck, KeyRound } from 'lucide-react';
 import { api, type AdminUser, type Role, ApiError } from '../api/client';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
@@ -12,6 +12,7 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null);
 
   async function refresh() {
     try {
@@ -132,15 +133,24 @@ export default function Users() {
                         {u.isActive ? 'Active' : 'Disabled'}
                       </button>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleDelete(u)}
-                        disabled={isSelf}
-                        title={isSelf ? 'You cannot delete yourself' : 'Delete user'}
-                        className="text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-400"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => setResetUser(u)}
+                          title="Reset password"
+                          className="text-slate-400 hover:text-brand-600"
+                        >
+                          <KeyRound size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(u)}
+                          disabled={isSelf}
+                          title={isSelf ? 'You cannot delete yourself' : 'Delete user'}
+                          className="text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-400"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -170,7 +180,89 @@ export default function Users() {
           onCancel={() => setShowAdd(false)}
         />
       </Modal>
+
+      <Modal
+        isOpen={resetUser !== null}
+        onClose={() => setResetUser(null)}
+        title="Reset Password"
+      >
+        {resetUser && (
+          <ResetPasswordForm
+            user={resetUser}
+            onDone={() => setResetUser(null)}
+            onCancel={() => setResetUser(null)}
+          />
+        )}
+      </Modal>
     </div>
+  );
+}
+
+function ResetPasswordForm({
+  user,
+  onDone,
+  onCancel,
+}: {
+  user: AdminUser;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.users.update(user.id, { password });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reset password');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-slate-500">
+        Set a new password for <strong className="text-slate-700">{user.name || user.email}</strong>.
+        Share it with them and ask them to change it after signing in.
+      </p>
+      <div>
+        <label className="block text-sm font-medium text-slate-600 mb-1">New password</label>
+        <input
+          type="text"
+          required
+          minLength={8}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="input-field"
+          placeholder="At least 8 characters"
+        />
+      </div>
+
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary">
+          Cancel
+        </button>
+        <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-60">
+          {submitting ? 'Saving…' : 'Reset Password'}
+        </button>
+      </div>
+    </form>
   );
 }
 

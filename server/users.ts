@@ -41,6 +41,12 @@ export function findByEmail(email: string): UserRow | undefined {
     .get(email.toLowerCase().trim()) as UserRow | undefined;
 }
 
+export function findById(id: string): UserRow | undefined {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id) as
+    | UserRow
+    | undefined;
+}
+
 export function countUsers(): number {
   return (db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
 }

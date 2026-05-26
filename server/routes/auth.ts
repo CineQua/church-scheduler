@@ -6,7 +6,7 @@ import {
   signToken,
   type AuthUser,
 } from '../auth';
-import { findByEmail } from '../users';
+import { findByEmail, findById, updateUser } from '../users';
 import { requireAuth } from '../middleware';
 
 export const authRouter = Router();
@@ -66,4 +66,31 @@ authRouter.post('/logout', (_req, res) => {
 
 authRouter.get('/me', requireAuth, (req, res) => {
   res.json({ user: req.user, env: NODE_ENV });
+});
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
+
+// Self-service password change for the currently authenticated user.
+authRouter.post('/change-password', requireAuth, (req, res) => {
+  const parsed = ChangePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0]?.message ?? 'Invalid input' });
+    return;
+  }
+
+  const row = findById(req.user!.id);
+  if (!row) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  if (!verifyPassword(parsed.data.currentPassword, row.passwordHash)) {
+    res.status(400).json({ error: 'Current password is incorrect' });
+    return;
+  }
+
+  updateUser(req.user!.id, { password: parsed.data.newPassword });
+  res.status(204).end();
 });

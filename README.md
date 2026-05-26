@@ -239,6 +239,11 @@ Roles are enforced **server-side** by middleware (`server/middleware.ts`): every
 `GET`s are allowed for any role, writes require an admin role, and `/api/users`
 requires Super Admin. The frontend additionally hides controls a role can't use.
 
+**Password management:** any signed-in user can change their own password from
+the navbar (**Change password** → `POST /api/auth/change-password`, which
+verifies the current password). Super Admins can reset any user's password from
+the **Users** page (key icon → `PUT /api/users/:id`).
+
 ## Database & Backend
 
 The app uses a small **Express + SQLite** backend (`server/`). The frontend never touches
@@ -255,6 +260,7 @@ Super Admin.
 | POST | `/api/auth/login` | public | Sign in; sets the session cookie |
 | POST | `/api/auth/logout` | auth | Clear the session cookie |
 | GET | `/api/auth/me` | auth | Current user + role |
+| POST | `/api/auth/change-password` | auth | Change your own password |
 | GET | `/api/users` | super_admin | List admin users |
 | POST | `/api/users` | super_admin | Create an admin user |
 | PUT | `/api/users/:id` | super_admin | Update role / status / password |
@@ -399,7 +405,7 @@ npm run format           # Prettier
 - Email/SMS notifications
 - Multi-parish support
 - Role swapping requests
-- Password reset / email invitations for new admins
+- Email invitations / self-service password reset (forgot-password) for new admins
 - AI-assisted scheduling recommendations
 - Conflict detection
 - Feast day and special event rules

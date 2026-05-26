@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,8 +9,10 @@ import {
   ShieldCheck,
   Church,
   LogOut,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 type Gate = 'canWrite' | 'isSuperAdmin';
 
@@ -33,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
 export function Navbar() {
   const auth = useAuth();
   const { user, logout } = auth;
+  const [showChangePw, setShowChangePw] = useState(false);
 
   const items = NAV_ITEMS.filter((item) => !item.requires || auth[item.requires]);
 
@@ -78,6 +82,13 @@ export function Navbar() {
             </div>
           )}
           <button
+            onClick={() => setShowChangePw(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-brand-200 hover:bg-brand-800 hover:text-white transition-colors"
+          >
+            <KeyRound size={16} />
+            Change password
+          </button>
+          <button
             onClick={() => void logout()}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-brand-200 hover:bg-brand-800 hover:text-white transition-colors"
           >
@@ -106,6 +117,13 @@ export function Navbar() {
             </NavLink>
           ))}
           <button
+            onClick={() => setShowChangePw(true)}
+            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400"
+          >
+            <KeyRound size={20} />
+            Password
+          </button>
+          <button
             onClick={() => void logout()}
             className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400"
           >
@@ -114,6 +132,8 @@ export function Navbar() {
           </button>
         </div>
       </nav>
+
+      <ChangePasswordModal isOpen={showChangePw} onClose={() => setShowChangePw(false)} />
     </>
   );
 }
