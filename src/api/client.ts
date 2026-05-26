@@ -102,6 +102,11 @@ export const api = {
         body: JSON.stringify(member),
       }),
     remove: (id: string) => request<void>(`/members/${id}`, { method: 'DELETE' }),
+    import: (members: Member[]) =>
+      request<{ created: number; updated: number; members: Member[] }>('/members/import', {
+        method: 'POST',
+        body: JSON.stringify(members),
+      }),
   },
   schedules: {
     list: () => request<WeeklySchedule[]>('/schedules'),

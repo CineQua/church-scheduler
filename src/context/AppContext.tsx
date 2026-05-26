@@ -32,6 +32,7 @@ type Action =
   | { type: 'ADD_MEMBER'; payload: Member }
   | { type: 'UPDATE_MEMBER'; payload: Member }
   | { type: 'DELETE_MEMBER'; payload: string }
+  | { type: 'SET_MEMBERS'; payload: Member[] }
   | { type: 'ADD_SCHEDULES'; payload: WeeklySchedule[] }
   | { type: 'SET_SCHEDULES'; payload: WeeklySchedule[] }
   | { type: 'UPDATE_SCHEDULE'; payload: WeeklySchedule }
@@ -59,6 +60,9 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         members: state.members.filter((m) => m.id !== action.payload),
       };
+
+    case 'SET_MEMBERS':
+      return { ...state, members: action.payload };
 
     case 'ADD_SCHEDULES':
       return {
@@ -110,6 +114,7 @@ interface AppContextValue extends AppState {
   addMember: (member: Member) => void;
   updateMember: (member: Member) => void;
   deleteMember: (id: string) => void;
+  importMembers: (members: Member[]) => Promise<{ created: number; updated: number }>;
   addSchedules: (schedules: WeeklySchedule[]) => void;
   updateSchedule: (schedule: WeeklySchedule) => void;
   deleteSchedule: (id: string) => void;
@@ -173,6 +178,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteMember: (id) => {
       dispatch({ type: 'DELETE_MEMBER', payload: id });
       persist(api.members.remove(id));
+    },
+    importMembers: async (members) => {
+      const result = await api.members.import(members);
+      dispatch({ type: 'SET_MEMBERS', payload: result.members });
+      return { created: result.created, updated: result.updated };
     },
     addSchedules: (s) => {
       dispatch({ type: 'ADD_SCHEDULES', payload: s });

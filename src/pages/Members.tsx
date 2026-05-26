@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { MemberTable } from '../components/MemberTable';
 import { MemberForm } from '../components/MemberForm';
+import { MemberImportExport } from '../components/MemberImportExport';
 import { Modal } from '../components/Modal';
 import type { Member, MemberFormData } from '../types/Member';
 import { rankHierarchy } from '../data/rankHierarchy';
@@ -86,15 +87,18 @@ export default function Members() {
             {members.length} total · {members.filter((m) => m.isActive).length} active
           </p>
         </div>
-        {canWrite && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <UserPlus size={16} />
-            Add Member
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <MemberImportExport />
+          {canWrite && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <UserPlus size={16} />
+              Add Member
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

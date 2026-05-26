@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { db } from '../db';
 import { MemberSchema, type Member } from '../../src/types/Member';
 
@@ -101,6 +102,34 @@ membersRouter.post('/', (req, res) => {
   }
   upsertMember(parsed.data as Member);
   res.status(201).json(parsed.data);
+});
+
+// Bulk import — upserts an array of members in one transaction (by id).
+const importMany = db.transaction((members: Member[]) => {
+  for (const m of members) upsertMember(m);
+});
+
+membersRouter.post('/import', (req, res) => {
+  const parsed = z.array(MemberSchema).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0]?.message ?? 'Invalid members' });
+    return;
+  }
+  const incoming = parsed.data as Member[];
+
+  const existingIds = new Set(
+    (db.prepare('SELECT id FROM members').all() as { id: string }[]).map((r) => r.id),
+  );
+  let created = 0;
+  let updated = 0;
+  for (const m of incoming) existingIds.has(m.id) ? updated++ : created++;
+
+  importMany(incoming);
+
+  const all = (
+    db.prepare('SELECT * FROM members ORDER BY fullName').all() as MemberRow[]
+  ).map(rowToMember);
+  res.status(200).json({ created, updated, members: all });
 });
 
 membersRouter.put('/:id', (req, res) => {

@@ -9,6 +9,7 @@ A React frontend talks to a small Express + SQLite backend; the whole thing ship
 - **Multi-admin login** — Email/password authentication with hashed passwords and signed-cookie sessions
 - **Role-based access** — Super Admin, Scheduler Admin, and read-only Viewer roles
 - **Member Management** — Add, edit, delete members with rank, gender, age, and availability
+- **Import / Export** — Download members as CSV or JSON and import them back (CSV for editing in a spreadsheet, JSON for full backup); imports upsert by ID and validate every row
 - **Smart Scheduling** — Weighted scoring engine that rotates assignments fairly
 - **Rule Engine** — All church rules live in a central config, editable via the UI
 - **Third Sunday Detection** — Automatically assigns youth conductor on the third Sunday
@@ -349,6 +350,10 @@ All state is the single SQLite file on the `/data` volume. To back up, copy
 the file back in (removing any `-wal`/`-shm` siblings), and restart. Full
 commands for Docker, Render, and Railway are in
 **[DEPLOYMENT.md → Backup & Restore](./DEPLOYMENT.md#backup--restore)**.
+
+For a quick, no-shell backup of your **members** specifically, use **Export
+JSON** on the Members page and keep the file safe — you can re-import it later
+from the same page. (This covers members only, not schedules/users.)
 
 ### Migrating to PostgreSQL later
 
