@@ -37,6 +37,7 @@ export default function Settings() {
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 px-3 font-medium text-slate-600">Level</th>
                 <th className="text-left py-2 px-3 font-medium text-slate-600">Rank Name</th>
+                <th className="text-left py-2 px-3 font-medium text-slate-600">Gender</th>
                 <th className="text-left py-2 px-3 font-medium text-slate-600">Category</th>
                 <th className="text-left py-2 px-3 font-medium text-slate-600">Members</th>
               </tr>
@@ -45,9 +46,12 @@ export default function Settings() {
               {rankHierarchy.map((rank) => {
                 const count = members.filter((m) => m.rankName === rank.name).length;
                 return (
-                  <tr key={rank.level} className="border-b border-slate-50 hover:bg-slate-50">
+                  <tr key={rank.name} className="border-b border-slate-50 hover:bg-slate-50">
                     <td className="py-2 px-3 font-mono text-slate-500">{rank.level}</td>
                     <td className="py-2 px-3 font-medium text-slate-800">{rank.name}</td>
+                    <td className="py-2 px-3 text-slate-500">
+                      {rank.gender === 'Any' ? 'All' : rank.gender}
+                    </td>
                     <td className="py-2 px-3">
                       <span
                         className={`rank-badge ${

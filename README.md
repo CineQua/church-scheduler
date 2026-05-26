@@ -204,6 +204,13 @@ All weights are editable in **Settings → Scoring Weights**.
 
 ## Rank Hierarchy
 
+Ranks are gender-specific. **Youth** (level 1) is shared by both. The member
+form shows only the ranks valid for the selected gender. Levels drive the
+scheduling rules for male roles; female ranks are organisational (the only
+female role, Prayer 2, has no rank requirement).
+
+**Male**
+
 | Level | Name | Category |
 |---|---|---|
 | 1 | Youth | Youth |
@@ -216,6 +223,17 @@ All weights are editable in **Settings → Scoring Weights**.
 | 8 | Most Senior Evangelist | Higher Rank |
 | 9 | Superior Evangelist | Higher Rank |
 | 10 | Shepherd | Higher Rank |
+
+**Female**
+
+| Level | Name | Category |
+|---|---|---|
+| 1 | Youth | Youth |
+| 2 | Sister | Lower Rank |
+| 3 | Elder Sister | Lower Rank |
+| 4 | Senior Elder Sister | Lower Rank |
+| 5 | Superior Senior Elder Sister | Higher Rank |
+| 6 | Mother Celestial | Higher Rank |
 
 ## Authentication & Roles
 

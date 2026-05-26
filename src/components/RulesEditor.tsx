@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Rules, ScoringWeights } from '../types/Rules';
-import { rankHierarchy } from '../data/rankHierarchy';
+import { maleRanks } from '../data/rankHierarchy';
 import { Save } from 'lucide-react';
 
 interface RulesEditorProps {
@@ -56,7 +56,7 @@ export function RulesEditor({ rules, onSave }: RulesEditorProps) {
                   className="input-field"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  {rankHierarchy.find(
+                  {maleRanks.find(
                     (r) => r.level === draft.serviceConductor.normalSunday.minimumRankLevel,
                   )?.name ?? '—'}{' '}
                   and above
@@ -160,7 +160,7 @@ export function RulesEditor({ rules, onSave }: RulesEditorProps) {
                 className="input-field"
               />
               <p className="text-xs text-slate-400 mt-1">
-                {rankHierarchy.find((r) => r.level === (draft[role].minimumRankLevel ?? 2))?.name ?? '—'} and above
+                {maleRanks.find((r) => r.level === (draft[role].minimumRankLevel ?? 2))?.name ?? '—'} and above
               </p>
             </div>
           ))}
@@ -183,7 +183,7 @@ export function RulesEditor({ rules, onSave }: RulesEditorProps) {
                 className="input-field"
               />
               <p className="text-xs text-slate-400 mt-1">
-                {rankHierarchy.find((r) => r.level === draft[role].minimumRankLevel)?.name ?? '—'} and above
+                {maleRanks.find((r) => r.level === draft[role].minimumRankLevel)?.name ?? '—'} and above
               </p>
             </div>
           ))}

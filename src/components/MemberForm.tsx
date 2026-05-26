@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Member, MemberFormData } from '../types/Member';
 import { MemberFormSchema } from '../types/Member';
-import { rankHierarchy } from '../data/rankHierarchy';
+import { getRanksForGender, getRankByName } from '../data/rankHierarchy';
 
 interface MemberFormProps {
   initialData?: Member;
@@ -40,7 +40,7 @@ export function MemberForm({ initialData, onSubmit, onCancel }: MemberFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleRankChange(rankName: string) {
-    const rank = rankHierarchy.find((r) => r.name === rankName);
+    const rank = getRankByName(rankName);
     if (rank) {
       setForm((f) => ({
         ...f,
@@ -49,6 +49,23 @@ export function MemberForm({ initialData, onSubmit, onCancel }: MemberFormProps)
         rankCategory: rank.category,
       }));
     }
+  }
+
+  // When gender changes, keep the rank if it's still valid (e.g. Youth);
+  // otherwise reset to that gender's entry rank (Brother / Sister).
+  function handleGenderChange(gender: 'Male' | 'Female') {
+    setForm((f) => {
+      const ranks = getRanksForGender(gender);
+      if (ranks.some((r) => r.name === f.rankName)) return { ...f, gender };
+      const fallback = ranks.find((r) => r.gender === gender) ?? ranks[0];
+      return {
+        ...f,
+        gender,
+        rankName: fallback.name,
+        rankLevel: fallback.level,
+        rankCategory: fallback.category,
+      };
+    });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -88,7 +105,7 @@ export function MemberForm({ initialData, onSubmit, onCancel }: MemberFormProps)
           <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
           <select
             value={form.gender}
-            onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as 'Male' | 'Female' }))}
+            onChange={(e) => handleGenderChange(e.target.value as 'Male' | 'Female')}
             className="input-field"
           >
             <option value="Male">Male</option>
@@ -119,7 +136,7 @@ export function MemberForm({ initialData, onSubmit, onCancel }: MemberFormProps)
           onChange={(e) => handleRankChange(e.target.value)}
           className="input-field"
         >
-          {rankHierarchy.map((r) => (
+          {getRanksForGender(form.gender).map((r) => (
             <option key={r.name} value={r.name}>
               {r.name} — Level {r.level} ({r.category})
             </option>

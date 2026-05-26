@@ -1,5 +1,5 @@
 import type DatabaseType from 'better-sqlite3';
-import { rankHierarchy } from '../src/data/rankHierarchy';
+import { allRanks } from '../src/data/rankHierarchy';
 
 /**
  * Idempotent schema migration. Safe to run on every startup — each statement
@@ -7,6 +7,17 @@ import { rankHierarchy } from '../src/data/rankHierarchy';
  * previous version) is preserved while the new auth/normalised tables are added.
  */
 export function migrate(db: DatabaseType.Database): void {
+  // Pre-migration: the `ranks` table gained a `gender` column and dropped the
+  // UNIQUE(level) constraint (levels now repeat across genders, e.g. Brother
+  // and Sister are both level 2). It holds only seeded reference data, so an
+  // old-schema table can be safely dropped and rebuilt below + re-seeded.
+  const ranksInfo = db.prepare("PRAGMA table_info('ranks')").all() as {
+    name: string;
+  }[];
+  if (ranksInfo.length > 0 && !ranksInfo.some((c) => c.name === 'gender')) {
+    db.exec('DROP TABLE ranks');
+  }
+
   db.exec(`
     -- ─── Auth ────────────────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS users (
@@ -38,10 +49,12 @@ export function migrate(db: DatabaseType.Database): void {
     );
 
     -- ─── Ranks (reference data, seeded from rankHierarchy) ─────────────────────
+    -- Levels repeat across genders, so level is NOT unique; name is the key.
     CREATE TABLE IF NOT EXISTS ranks (
       name     TEXT PRIMARY KEY,
-      level    INTEGER NOT NULL UNIQUE,
-      category TEXT NOT NULL
+      level    INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      gender   TEXT NOT NULL DEFAULT 'Any'
     );
 
     -- ─── Rules (singleton config row) ──────────────────────────────────────────
@@ -91,11 +104,13 @@ export function migrate(db: DatabaseType.Database): void {
 /** Seed the ranks reference table from the canonical hierarchy (idempotent). */
 export function seedRanks(db: DatabaseType.Database): void {
   const insert = db.prepare(
-    `INSERT INTO ranks (name, level, category) VALUES (@name, @level, @category)
-     ON CONFLICT(name) DO UPDATE SET level = excluded.level, category = excluded.category`,
+    `INSERT INTO ranks (name, level, category, gender)
+       VALUES (@name, @level, @category, @gender)
+     ON CONFLICT(name) DO UPDATE SET
+       level = excluded.level, category = excluded.category, gender = excluded.gender`,
   );
   const seed = db.transaction(() => {
-    for (const rank of rankHierarchy) insert.run(rank);
+    for (const rank of allRanks) insert.run(rank);
   });
   seed();
 }
