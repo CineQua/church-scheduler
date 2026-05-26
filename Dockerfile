@@ -26,10 +26,11 @@ COPY server ./server
 COPY src ./src
 COPY tsconfig.json ./
 
-# Persistent data directory — mount a named volume or host path here so the
-# database survives container restarts and redeploys.
+# Persistent data directory. Mount a volume here (Railway volume, Render disk,
+# or Compose named volume) so the database survives restarts and redeploys.
+# Note: no `VOLUME` instruction — Railway rejects it during build validation,
+# and it isn't needed since the persistent storage is mounted at runtime.
 RUN mkdir -p /data
-VOLUME ["/data"]
 
 EXPOSE 3001
 CMD ["npx", "tsx", "server/index.ts"]
