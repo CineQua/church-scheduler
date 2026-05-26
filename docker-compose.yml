@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: church-scheduler
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/church.db
+    volumes:
+      - church-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  church-data:

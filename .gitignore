@@ -30,3 +30,12 @@ dist-ssr
 
 # Test coverage
 coverage
+
+# SQLite database files
+data
+*.db
+*.db-shm
+*.db-wal
+
+# Screenshots
+screenshot.png

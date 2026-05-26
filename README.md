@@ -2,6 +2,8 @@
 
 A web-based worship service schedule generator for church administrators. Assigns members to Sunday service duties based on rank, gender, age, and fairness rotation.
 
+A React frontend talks to a small Express + SQLite backend; the whole thing ships as a single Docker container.
+
 ## Features
 
 - **Member Management** — Add, edit, delete members with rank, gender, age, and availability
@@ -10,20 +12,53 @@ A web-based worship service schedule generator for church administrators. Assign
 - **Third Sunday Detection** — Automatically assigns youth conductor on the third Sunday
 - **Manual Overrides** — Edit any assignment inline after generation
 - **Export** — CSV, print-ready PDF, and clipboard copy
+- **SQLite persistence** — Shared, central database (replaces per-browser localStorage)
 
-## Quick Start
+## Quick Start (Docker — recommended)
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:3001](http://localhost:3001). The SQLite database is stored in the
+`church-data` Docker volume and persists across restarts.
+
+## Quick Start (local development)
+
+Runs the Vite frontend (port 5173) and the Express API (port 3001) together. Vite proxies
+`/api` requests to the backend.
 
 ```bash
 npm install
-npm run dev
+npm run dev:all
 ```
 
 Open [http://localhost:5173](http://localhost:5173).
 
+To run them separately: `npm run dev` (frontend) and `npm run dev:server` (backend).
+
+### Production build without Docker
+
+```bash
+npm run build   # builds the frontend into dist/
+npm start       # Express serves dist/ + the API on port 3001
+```
+
 ## Project Structure
 
 ```
+server/                # Express + SQLite backend
+├── db.ts              # better-sqlite3 connection + schema + seed
+├── index.ts           # Express app: API routes + serves built frontend
+└── routes/
+    ├── members.ts     # GET/POST/PUT/DELETE /api/members
+    ├── schedules.ts   # GET/POST/PUT/DELETE /api/schedules (bulk save dedups by date)
+    └── rules.ts       # GET/PUT /api/rules
+
 src/
+├── api/
+│   └── client.ts      # Typed fetch wrappers for the backend (/api/*)
+│
 ├── components/        # Reusable UI components
 │   ├── MemberForm     # Add/edit member modal form
 │   ├── MemberTable    # Members list with inline actions
@@ -48,7 +83,7 @@ src/
 │   └── exportService  # CSV / print / clipboard export
 │
 ├── context/
-│   └── AppContext     # React Context + localStorage persistence
+│   └── AppContext     # React Context; loads from + persists to the API
 │
 ├── data/
 │   ├── rules.ts       # Default rule configuration
@@ -139,16 +174,45 @@ All weights are editable in **Settings → Scoring Weights**.
 | 9 | Superior Evangelist | Higher Rank |
 | 10 | Shepherd | Higher Rank |
 
-## Future Database Integration
+## Database & Backend
 
-The app currently uses `localStorage`. To migrate to a database:
+The app uses a small **Express + SQLite** backend (`server/`). The frontend never touches
+the database directly — it calls the REST API via `src/api/client.ts`.
 
-1. Replace the `localStorage` read/write in `src/context/AppContext.tsx` with async API calls
-2. Create a `src/api/` layer (e.g. `membersApi.ts`, `schedulesApi.ts`)
-3. Swap the reducer dispatch calls to call API functions
-4. Connect to Supabase/Firebase/PostgreSQL via environment variables in `.env`
+### API endpoints
 
-The state shape (`Member[]`, `WeeklySchedule[]`, `Rules`) maps directly to database tables.
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/api/members` | List all members |
+| POST | `/api/members` | Create a member |
+| PUT | `/api/members/:id` | Update a member |
+| DELETE | `/api/members/:id` | Delete a member |
+| GET | `/api/schedules` | List all schedules |
+| POST | `/api/schedules` | Bulk save (replaces schedules sharing a date) |
+| PUT | `/api/schedules/:id` | Update one schedule (e.g. manual assignment edits) |
+| DELETE | `/api/schedules/:id` | Delete a schedule |
+| GET | `/api/rules` | Get the rules config |
+| PUT | `/api/rules` | Update the rules config |
+
+### SQLite schema
+
+- `members` — one row per member; `assignmentHistory` and future optional fields stored as JSON
+- `schedules` — one row per Sunday; `date` is UNIQUE; `assignments` stored as JSON keyed by role
+- `rules` — single-row config blob (`id = 1`)
+
+The DB file location is set by `DATABASE_PATH` (default `./data/church.db` locally,
+`/app/data/church.db` in Docker, backed by a named volume).
+
+### Configuration
+
+Copy `.env.example` to `.env` and adjust `PORT` / `DATABASE_PATH` if needed.
+
+### Migrating to PostgreSQL later
+
+The data-access logic is isolated in `server/db.ts` and `server/routes/*`. To swap SQLite
+for PostgreSQL: replace `better-sqlite3` with `pg`, convert the synchronous `db.prepare().run()`
+calls to async queries, and add a `db` service to `docker-compose.yml`. The frontend and the
+API contract stay unchanged.
 
 ## Git Workflow
 
@@ -178,28 +242,35 @@ docs: update README
 
 | Layer | Technology |
 |---|---|
-| Framework | React 18 + TypeScript |
+| Frontend | React 18 + TypeScript |
 | Build | Vite |
 | Styling | Tailwind CSS |
 | Routing | React Router v6 |
 | Validation | Zod |
 | Dates | date-fns |
 | State | React Context + useReducer |
-| Storage | localStorage (MVP) |
+| Backend | Express 4 (TypeScript via tsx) |
+| Database | SQLite (better-sqlite3) |
+| Container | Docker + docker-compose |
 | Testing | Vitest + React Testing Library |
 
 ## Scripts
 
 ```bash
-npm run dev        # Development server
-npm run build      # Production build
-npm test           # Run tests
-npm run lint       # ESLint
-npm run format     # Prettier
+npm run dev:all          # Frontend + backend together (dev)
+npm run dev              # Frontend only (Vite, port 5173)
+npm run dev:server       # Backend only (Express, port 3001)
+npm run build            # Production build of the frontend
+npm start                # Run the backend serving the built frontend
+npm test                 # Run unit tests
+npm run typecheck:server # Type-check the backend
+npm run lint             # ESLint
+npm run format           # Prettier
 ```
 
 ## Future Roadmap
 
+- PostgreSQL option for multi-parish / high-concurrency deployments
 - Cloud database sync (Supabase / Firebase)
 - Choir and Sunday School schedules
 - Availability calendar
